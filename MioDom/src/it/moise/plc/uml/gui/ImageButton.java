@@ -26,7 +26,7 @@ public class ImageButton extends JButton{
 	        }
 			//ImageIcon img = new ImageIcon("images/"+imageName);
 		    this.setIcon(img);
-		    this.setBorderPainted(isEnabled());
+		  // this.setBorderPainted(isEnabled());
 		   this.setName(toolTipText);
 		    
 		    this.setToolTipText(altText);

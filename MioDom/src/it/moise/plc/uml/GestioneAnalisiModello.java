@@ -131,13 +131,13 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 					if (idStateLevelUp != "-1"){
 						
 						stateLevelTemp = this.getStateLevelFromListaStati(listaStati, idStateLevelUp);
-						testoState = testoState +" AND (STATE_LEVELS[" + stateLevelTemp.getLevelStato() +"].Current = " + stateLevelTemp.getNumberState() ;
+						testoState = testoState +" AND (STATE_LEVELS[" + stateLevelTemp.getLevelStato() +"].Current = " + stateLevelTemp.getNumberState() + ")";
 						
 						idStateLevelUp = stateLevelTemp.getIdStateLevelUp();
 						while (idStateLevelUp != "-1"){
 							idStateLevelUp = stateLevelTemp.getIdStateLevelUp();
 							stateLevelTemp = this.getStateLevelFromListaStati(listaStati, idStateLevelUp);
-							testoState = testoState +" AND (STATE_LEVELS[" + stateLevelTemp.getLevelStato() +"].Current = " + stateLevelTemp.getNumberState() ;
+							testoState = testoState +" AND (STATE_LEVELS[" + stateLevelTemp.getLevelStato() +"].Current = " + stateLevelTemp.getNumberState() +")";
 							idStateLevelUp = stateLevelTemp.getIdStateLevelUp();
 					}
 						
@@ -180,7 +180,8 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 	 * Crea il file SFCFake.InitiAction.txt
 	 * @param arrayTransitions Array bidimensionale di tutte le transizioni
 	 */
-	public void createSFCFake_Init_ActionFile(ArrayList<String> trxOut, StateLevel[][] arrayStateLevel, Vector<Transitions> vectorTransitions,ArrayList<Region> listRegion ){
+	public void createSFCFake_Init_ActionFile(ArrayList<String> trxOut, StateLevel[][] arrayStateLevel, 
+			Vector<Transitions> vectorTransitions,ArrayList<Region> listRegion ){
 		int nrLivelli = arrayStateLevel.length;
 		int indiceTrxOut = 0;
 		int indice = 0;
@@ -239,13 +240,16 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 					testoTrxSource = testoTrxSource + "0;\n";
 			}
 			// Genero le stringhe per il TARGET
+			Vector<String> livelliStati = new Vector<String>();
+			livelliStati = getNumberUpState(stateTarget.getLevelStato(), stateTarget.getNumberState(), vectorTransitions.get(indiceTrxOut).getIdStateTarget(), arrayStateLevel);
 			for (int livello = 0;  livello < arrayStateLevel.length; livello++){
 				testoTrxTarget = testoTrxTarget + "TRXs[" + index +"].Target[" + (livello+1) +"] :=";
-				if (stateTarget.getLevelStato() == (livello+1))
-					testoTrxTarget = testoTrxTarget + stateTarget.getNumberState() + ";\n";
-				else
-					testoTrxTarget = testoTrxTarget + "0;\n";
+				
+					testoTrxTarget = testoTrxTarget + livelliStati.get(livello) + ";\n";
+				
+				
 			}
+			
 			testoCommento = "(* Setup transizione " + testoTrxOriginal + " : Source nome: " + stateSource.getNomeStato() +
 					" Level: " + stateSource.getLevelStato() + " n. stato: " + stateSource.getNumberState() + 
 					" : Target nome: " + stateTarget.getNomeStato() + " Level: " + stateTarget.getLevelStato() + 
@@ -1071,5 +1075,77 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 			}
 		}
 		return state;
+	}
+	/**
+	 * Questo metodo prend in input il numero di livello ed il numero di uno stato e cerca lo stato di livello superiore
+	 * @param livello Indica il livello
+	 * @param idStato Indica il numero dello stato da cui partire per cercare ilsuo genitore
+	 * @param arrayStateLevel Array bidimensionale degli stati
+	 * @return ris Restituisce il numero dello stato genitore
+	 */
+	private Vector<String> getNumberUpState(int livello, int  nrStateTarget, String idStato, StateLevel[][] arrayStateLevel){
+		Vector<String> livelli = new Vector<String>();
+		Vector<String> livelliDefinitivi = new Vector<String>();
+		int livelloIniziale = livello-1;
+		int ris = -1;
+		while (livello > 1){
+			
+			for (int i=0; i < arrayStateLevel.length; i++){
+				for (int j=0; j < arrayStateLevel[i].length; j++){
+					if (arrayStateLevel[i][j] != null){
+						for (String item : arrayStateLevel[i][j].getVectorSubState()){
+							if (item.equals(idStato)){
+								ris = arrayStateLevel[i][j].getNumberState();
+								livelli.add(String.valueOf(ris));
+								livello = arrayStateLevel[i][j].getLevelStato();
+								idStato = arrayStateLevel[i][j].getIdStato();
+							}
+						}
+					}
+				}
+			}
+		}
+		
+		// Metto in ordine i livelli
+		// prima di tutto inizializzo il vettore
+		if (livelloIniziale == 0){
+				livelliDefinitivi.add(String.valueOf(nrStateTarget));
+				for (int j=1; j < arrayStateLevel.length; j++)
+					livelliDefinitivi.add(String.valueOf(-1));
+		}else{
+			for (int i=0; i < arrayStateLevel.length; i++){
+				if (i < livelloIniziale){
+					livelliDefinitivi.add(livelli.get(livelli.size()-1));
+					livelli.remove(livelli.size()-1);
+				}
+				else if (i == livelloIniziale){
+					livelliDefinitivi.add(String.valueOf(nrStateTarget));
+				}
+				else{
+					
+						livelliDefinitivi.add(String.valueOf(-6));
+				}
+			}
+		}
+		
+		return livelliDefinitivi;
+	}
+	
+	private Vector<String> getNumberUpStateRicorsivo(int livello, String idStato, StateLevel[][] arrayStateLevel){
+		Vector<String> livelli = new Vector<String>();
+		Vector<String> livell = new Vector<String>();
+		int ris = -1;
+		
+		for (int i=0; i < arrayStateLevel.length; i++){
+			for (int j=0; j < arrayStateLevel[i].length; j++){
+				if (arrayStateLevel[i][j] != null){
+					for (String item : arrayStateLevel.clone()[i][j].getVectorSubState()){
+						if (item.equals(idStato))
+							ris = arrayStateLevel[i][j].getNumberState();
+					}
+				}
+			}
+		}
+		return livelli;
 	}
 }

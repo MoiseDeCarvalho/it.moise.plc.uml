@@ -66,8 +66,8 @@ public class State implements InterfaceState, Comparable<State> {
 				switch (temp[0]){
 				case "name":
 					String tmp = node.item(i).getNodeValue();
-					tmp = tmp.replace("-|.|!", "_");
-					
+					tmp = tmp.replace("-|.|!| ", "_");
+					tmp = tmp.replace(" ", "_");
 					this.setName(tmp);
 					break;
 				case "id":

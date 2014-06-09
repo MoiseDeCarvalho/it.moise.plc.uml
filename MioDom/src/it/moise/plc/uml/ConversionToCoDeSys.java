@@ -368,7 +368,7 @@ public class ConversionToCoDeSys {
 		FormattedText testo = new ObjectFactory().createFormattedText();
 		AddData addData = new ObjectFactory().createAddData();
 		
-		String text = "test();";
+		String text = "test.Inizialization();\ntest.AssegnaCondizioniBooleaneTRX();\ntest();";
 		
 		pouProgram.setName("PLC_PRG");
 		pouProgram.setPouType(PouType.fromValue("program"));

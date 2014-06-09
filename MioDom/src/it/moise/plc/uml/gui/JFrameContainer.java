@@ -651,7 +651,7 @@ public class JFrameContainer extends JFrame  {
 					frameHelp.add(new JScrollPane(helpPanel));
 					//frameHelp.setSize(800, 600);
 					frameHelp.setPreferredSize(new Dimension(1300,780));
-					frameHelp.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("images/help.png")));
+					frameHelp.setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("images/ico.png")));
 			        //Display the window.
 				}
 				frameHelp.pack();
@@ -661,9 +661,10 @@ public class JFrameContainer extends JFrame  {
 	
 	private void setIcon(){
 		try{
-			 System.out.println("ciao");
+			 System.out.println("Bye");
+			 setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("images/ico.png")));
 		}
-	//	setIconImage(Toolkit.getDefaultToolkit().getImage(getClass().getResource("images/help.png")));}
+		
 		catch(Exception e){
 			e.printStackTrace();
 		}

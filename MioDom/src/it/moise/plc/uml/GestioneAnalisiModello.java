@@ -94,7 +94,7 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 		testo = testo + "FOR INDEX := 1 TO " + ntransitions + " DO\n";
 		testo = testo + "\tFOR LEVEL_CURR := 1 TO " + nLevel  +" DO;\n";		
 		testo = testo + "\t\tIF (STATE_LEVELS[LEVEL_CURR].Current = TRXs[INDEX].Source[LEVEL_CURR]) THEN\n";
-		testo = testo + "\t\t\tIF TRXs[INDEX].Condition THEN";
+		testo = testo + "\t\t\tIF TRXs[INDEX].Condition THEN\n";
 		testo = testo + "\t\t\t\tFOR LEVEL_NEXT := 1 TO " + nLevel +" DO\n";
 		testo = testo + "\t\t\t\t\tSTATE_LEVELS[LEVEL_NEXT].Next := TRXs[INDEX].Target[LEVEL_NEXT];\n";
 		testo = testo + "\t\t\t\tEND_FOR\n";
@@ -267,9 +267,7 @@ public GestioneAnalisiModello(Model modello, GlobalVar globalVar, JTextArea txtA
 			testoCommento = "";
 			index++;
 		}
-		for (int i=0; i < arrayStateLevel.length; i++){
-			testoInitActionValue = testoInitActionValue + "\nSTATE_LEVELS[" + (i+1) + "].Current := " + 1 + ";";
-		}
+		
 		// set il valore di initActionValue per poi usarlo
 		this.globalVar.setInitActionValue(testoInitActionValue);
 	}

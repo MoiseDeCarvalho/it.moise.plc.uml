@@ -75,6 +75,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 	private TransitionTag transition;
 	private JumpStepTag jumpStep;
 	
+	private String assegnazioneTRXConValore ="";
 	/*
 	 *  Questa lista viene utilizzata da selectionDivergence e selectionConvergence.
 	 *  Ogni volta che viene creata una selection, viene aggiunto un elemento
@@ -358,7 +359,22 @@ public class PouTag extends Project.Types.Pous.Pou {
 			/*
 			 * Sezione Action Transitions - Action Block dello step EXEC
 			 */
+		// Action UpdateTRX
+		localId ++;
+		action = new ObjectFactory().createBodySFCActionBlockAction();
+		action.setLocalId(new BigInteger(String.valueOf(localId)));
+		action.setQualifier("N");
+		action.setDuration("");
+		action.setIndicator("");
+		action.setRelPosition(position);
+		reference = new ObjectFactory().createBodySFCActionBlockActionReference();
+		reference.setName("UpdateTRX");
+		action.setReference(reference);
+		action.setConnectionPointOut(new ObjectFactory().createConnectionPointOut());
+		actionBlock.getAction().add(action);
 		
+		
+		// Action Transitions
 		localId ++;
 		action = new ObjectFactory().createBodySFCActionBlockAction();
 		action.setLocalId(new BigInteger(String.valueOf(localId)));
@@ -462,10 +478,19 @@ public class PouTag extends Project.Types.Pous.Pou {
 		this.body.setSFC(sfc);
 	}
 	public void setActions(String stateManagerActionValue, String initActionValue, int numberTransitions, StateLevel[][] listaStati){
-		// State Manager Action
-		this.setAction("State_Manager", stateManagerActionValue);
+		
+		
+		for (int i=0; i < listaStati.length; i++){
+			if (i==0){
+				initActionValue = initActionValue + "\nSTATE_LEVELS[" + (i+1) + "].Current := " + this.grafo.get(this.searchFistStep()).getNumberState() + ";";
+			}
+			else{
+			}
+		initActionValue = initActionValue + "\nSTATE_LEVELS[" + (i+1) + "].Current := " + 0 + ";";
+		}
 		// State Init Action
 		this.setAction("Inizialization", initActionValue);
+		
 		// State Transitions (ladder diagram)
 		this.setTransitionsAction(numberTransitions);
 		
@@ -512,13 +537,22 @@ public class PouTag extends Project.Types.Pous.Pou {
 			nameTrx = "";
 			tmp = "";
 		}
+		
+		this.assegnazioneTRXConValore = testo;
+		;
+		this.setAction("UpdateTRX", this.assegnazioneTRXConValore);
+		
+		// State Manager Action
+		this.setAction("State_Manager", stateManagerActionValue);
+		
+		testo = "";
 		// inserisco il valore delle variabili
 		testo = testo + "\n(* Assegno il valore delle variabili dichiarate nella prima transizione di avvio della state machine *)\n";
 		for (Variable item : this.vectorVariable){
 			testo = testo + item.getName() + "\t\t:= " + item.getValue() + ";\n";
 		}
 		
-		// inizializzo STATE_LEVELS
+		/* inizializzo STATE_LEVELS
 		int primoStato = this.searchFistStep();
 		String initStateLevel = "";
 		
@@ -541,10 +575,21 @@ public class PouTag extends Project.Types.Pous.Pou {
 					
 			}
 			
-		}
+		}*/
 		
-		testo = testo + initStateLevel;
-			setAction("AssegnaCondizioniBooleaneTRX", testo);
+		testo = testo + "\n\n\n";
+		// aggiungo tutti valori costanti FALSE che saranno utilizzati nell SFC
+	/*	int ind = 0;
+		String testo_Costanti ="";
+		for (String itemTrxOut : this.listTrxOutGrafo){
+			ind = Integer.parseInt(itemTrxOut);
+			testo_Costanti = testo_Costanti + "_" +vectorTransitions.get(ind).getName() + ":= FALSE;\n";
+		}
+		testo = testo + testo_Costanti;
+	*/
+		setAction("AssegnaCondizioniBooleaneTRX", testo);
+		
+		// creo l'action per UpdateTRX
 		
 	}
 	public void setTransitionsAction(int numberTransitions){
@@ -773,8 +818,8 @@ public class PouTag extends Project.Types.Pous.Pou {
 		DataType dataTypeVar; 
 		VarListPlain.Variable variabile;
 		int indice = 0;
-		// prima di tutto creao le variabili globali che sono indicate pe rle transizioni.
-		// una variabile globale TRX_XX è di tipo booleana, una per ogni transizione del grano.
+		// prima di tutto creao le variabili globali che sono indicate per le transizioni.
+		// una variabile globale TRX_XX è di tipo booleana, una per ogni transizione del grafo.
 		// lo stesso nome di variabile è utilizzato nel source nel LADDER e nel SFC
 		for (String itemTrxOut : this.listTrxOutGrafo){
 			indice = Integer.parseInt(itemTrxOut);
@@ -785,6 +830,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 			variabile.setType(dataTypeVar);
 			this.globalInterfaceVars.getVariable().add(variabile);
 		}
+		
 		for (Variable item : this.vectorVariable){
 			if (item.getScopeVariable().equals("GLOBAL")){
 				variabile = new ObjectFactory().createVarListPlainVariable();
@@ -798,9 +844,27 @@ public class PouTag extends Project.Types.Pous.Pou {
 	public void setLocalInterfaceConstants(int numberTransitions){
 		DataType dataTypeBool = new ObjectFactory().createDataType();
 		VarListPlain.Variable varCostante;
-		Value_.SimpleValue simpleValue = new ObjectFactory().createValueSimpleValue();
-		Value_ valoreCostante = new ObjectFactory().createValue();
-		
+		Value_.SimpleValue simpleValue;
+		Value_ valoreCostante; 
+		int indice = 0;
+		/*
+		 * Creo delle costanti tutte FALSE che saranno utilizzate per il diagramma SFC in modo che non si può transitare da uno stato all'altro
+		 * il nome sarà: _NOME_TRX
+		 */
+		for (String itemTrxOut : this.listTrxOutGrafo){
+			indice = Integer.parseInt(itemTrxOut);
+			dataTypeBool = new ObjectFactory().createDataType();
+			varCostante = new ObjectFactory().createVarListPlainVariable();
+			dataTypeBool.setBOOL(false);
+			varCostante.setName("_" + vectorTransitions.get(indice).getName());
+			varCostante.setType(dataTypeBool);
+			valoreCostante = new ObjectFactory().createValue();
+			simpleValue = new ObjectFactory().createValueSimpleValue();
+			simpleValue.setValue("FALSE");
+			valoreCostante.setSimpleValue(simpleValue);
+			varCostante.setInitialValue(valoreCostante);
+			this.constantsLocalVars.getVariable().add(varCostante);
+		}
 		/********************** Variabili CONSTANT impostate perchè presenti nell'uml******************/
 		DataType dataTypeVar = new ObjectFactory().createDataType();
 		VarListPlain.Variable variabile;
@@ -1314,7 +1378,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 			i++;	
 		} // k
 		localId++;
-		this.inVariable = new InVariableTag(this.vectorTransitions.get((nrTrx-1)).getName(), localId, position);
+		this.inVariable = new InVariableTag("_" + this.vectorTransitions.get((nrTrx-1)).getName(), localId, position);
 		this.vectorTransitions.get(nrTrx-1).setTrxUtilizzatoInSFC(true);
 		
 		this.sfc.getCommentOrErrorOrConnector().add(inVariable);

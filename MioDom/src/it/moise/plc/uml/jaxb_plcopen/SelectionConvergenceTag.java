@@ -21,6 +21,8 @@ public class SelectionConvergenceTag extends Body.SFC.SelectionConvergence {
 	private void createSelectionConvergence(int localId, Vector<Integer> arrayRefLocalId, int numberStateSelection){
 		this.setLocalId(new BigInteger(String.valueOf(localId)));
 		ConnectionPointInTag connectionPointIn;
+		if (localId == 92)
+			System.out.println("Errore");
 		for (int i=0; i < numberStateSelection; i++){
 			if (i < (numberStateSelection-1)){
 				this.connectionPointInSelConvergence = new ObjectFactory().createBodySFCSelectionConvergenceConnectionPointIn();					

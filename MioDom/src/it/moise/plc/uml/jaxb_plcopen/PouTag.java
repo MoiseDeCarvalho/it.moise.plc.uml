@@ -76,6 +76,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 	private JumpStepTag jumpStep;
 	
 	private String assegnazioneTRXConValore ="";
+	private StateLevel[][] listaStati;
 	/*
 	 *  Questa lista viene utilizzata da selectionDivergence e selectionConvergence.
 	 *  Ogni volta che viene creata una selection, viene aggiunto un elemento
@@ -139,7 +140,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 					Vector<Variable> vectorVariable,
 					Vector<String> vectorUserType) {
 		super();
-		
+		this.listaStati = listaStati;
 		this.numberLivelli = listaStati.length;
 		this.listTrxIn = listTrxIn;
 		this.vectorTransitions = vectorTransitions;
@@ -223,7 +224,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 		StepTag step;
 		
 		
-		
+		clearSubstateInListAdiacentiGrafo();
 		
 		
 		ConnectionPointOutAction connectionPointOutAction;
@@ -426,14 +427,8 @@ public class PouTag extends Project.Types.Pous.Pou {
 		/*
 		 * Fine Step EXEC
 		 */
-		localId++;
-		inVariable = new InVariableTag("FALSE", localId, position);
-		this.sfc.getCommentOrErrorOrConnector().add(inVariable);
-		
-		localId++;
-		transition = new TransitionTag(position, localId, 6, localId-1, addData);
-		this.sfc.getCommentOrErrorOrConnector().add(transition);
-
+	/*	
+*/
 		/*
 		 * Inizio del ciclo FOR per aggiungere gli altri stati
 		 */
@@ -443,6 +438,82 @@ public class PouTag extends Project.Types.Pous.Pou {
 			if (listaStati[0][i] != null){
 				this.setNumberStateFirstLevel(i+1);
 			}
+		}
+		
+		/***********************************************************************************************
+		 * Inizia la modifica per la visita DFS_Hierarchic
+		 */
+		boolean selectionFirstLevel = false;
+		String selectionNameFirstLevel = "";
+		int localIdSelectionFirstLevel = 0;
+		int contaStatiPrimoLivello = 0;
+		for (int j=0; j < listaStati[0].length; j++){
+				if (listaStati[0][j] != null)
+					contaStatiPrimoLivello++;
+		}
+		if (contaStatiPrimoLivello == 1){
+			// ho un solo stato al primo livello
+			// aggiungo un  inVariable FALSE
+			localId++;
+			inVariable = new InVariableTag("FALSE", localId, position);
+			this.sfc.getCommentOrErrorOrConnector().add(inVariable);
+			
+			localId++;
+			transition = new TransitionTag(position, localId, 6, localId-1, addData);
+			this.sfc.getCommentOrErrorOrConnector().add(transition);
+			
+			DFS_Hierarchic(listaStati, this.grafo.get(this.searchFistStep()), localId, position, addData);
+			
+		}else{
+			// ho più stati al primo livello e devo effettuare una selection
+			localId++;
+			selectionFirstLevel = true;
+			selectionNameFirstLevel = "selection"+localId;
+			localIdSelectionFirstLevel = localId;
+			this.setAddListSelection(new it.moise.plc.uml.jaxb_plcopen.SelectionDivConv("selection"+localId, localId));
+			this.selectionDivergence = new SelectionDivergenceTag(localId, position, 6, contaStatiPrimoLivello, addData);
+			this.sfc.getCommentOrErrorOrConnector().add(selectionDivergence);
+			// devo effettuare la visita per ogni nodo appartenente al primo livello
+			
+			for (int j=0; j < listaStati[0].length; j++){
+				if (listaStati[0][j] !=null){
+				int newLocalId =0;	
+				
+					localId++;
+					this.inVariable = new InVariableTag("FALSE" , localId, position);	
+					this.inVariable.setLocalId(new BigInteger(String.valueOf(localId)));
+					this.sfc.getCommentOrErrorOrConnector().add(this.inVariable);
+					
+					localId++;
+					this.transition = new TransitionTag(position, localId, localIdSelectionFirstLevel, localId-1, addData);	
+					this.transition.setLocalId(new BigInteger(String.valueOf(localId)));
+					this.sfc.getCommentOrErrorOrConnector().add(this.transition);
+					
+					
+					localId = DFS_Hierarchic(listaStati, listaStati[0][j], localId, position, addData);
+					/*if (listaStati[0][j].getAction().length() > 0)
+						this.getListSelection().get(this.getListSelection().size()-1).getListRefLocalId().add(localId-2);
+					else					
+						this.getListSelection().get(this.getListSelection().size()-1).getListRefLocalId().add(localId);
+					
+					localId++;*/
+				}
+			}
+			localId++;
+			int ultimaSelection = this.getListSelection().size()-1;
+			
+			System.out.println("\n\n Chiudo la selection con ConvergenceSelection : " + localId);
+			this.selectionConvergence = new SelectionConvergenceTag(
+											localId, 
+											this.getListSelection().get(ultimaSelection).getListRefLocalId(), 
+											contaStatiPrimoLivello);
+			this.sfc.getCommentOrErrorOrConnector().add(selectionConvergence);
+			System.out.println("listSelection ha nr. " + (ultimaSelection+1));
+			System.out.println("chiudo la selection con il nome : " + this.getListSelection().get(ultimaSelection).getName());
+			this.getListSelection().remove(ultimaSelection);
+			ultimaSelection = this.getListSelection().size()-1;
+			System.out.println("Ora listSelection ha nr. " + (ultimaSelection+1));
+			
 		}
 	//	fileOutput.scrivi("\n\n\n\n Numero di stati al primo livello " + getNumberStateFirstLevel() + "\n\n\n\n\n");
 	
@@ -464,7 +535,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 		//step = new StepTag(f alse, localId, nomeStatoo, position, localId-1, addData, localId-1, "-1");
 		//this.sfc.getCommentOrErrorOrConnector().add(step);
 		// la funzione searchFirstStep, trova ol primo stato di avvio
-		localId = DFS (this.grafo, this.grafo.get(this.searchFistStep()) , localId, position, addData);
+		//localId = DFS (this.grafo, this.grafo.get(this.searchFistStep()) , localId, position, addData);
 		
 		System.out.println("\n\nUltimo localId " + localId);
 		
@@ -865,6 +936,19 @@ public class PouTag extends Project.Types.Pous.Pou {
 			varCostante.setInitialValue(valoreCostante);
 			this.constantsLocalVars.getVariable().add(varCostante);
 		}
+		
+		// creo la costante _TRX_DEFAULT
+		dataTypeBool = new ObjectFactory().createDataType();
+		varCostante = new ObjectFactory().createVarListPlainVariable();
+		dataTypeBool.setBOOL(false);
+		varCostante.setName("_TRX_DEFAULT");
+		varCostante.setType(dataTypeBool);
+		valoreCostante = new ObjectFactory().createValue();
+		simpleValue = new ObjectFactory().createValueSimpleValue();
+		simpleValue.setValue("FALSE");
+		valoreCostante.setSimpleValue(simpleValue);
+		varCostante.setInitialValue(valoreCostante);
+		this.constantsLocalVars.getVariable().add(varCostante);
 		/********************** Variabili CONSTANT impostate perchè presenti nell'uml******************/
 		DataType dataTypeVar = new ObjectFactory().createDataType();
 		VarListPlain.Variable variabile;
@@ -1199,9 +1283,259 @@ public class PouTag extends Project.Types.Pous.Pou {
 		return firstStep;
 	}
 	
-	
+	private int DFS_Hierarchic(StateLevel[][] listaStati, StateLevel u, int localId, Position position, AddData addData){
+		StateLevel v = new StateLevel();
+		int nrSubState = u.getVectorSubState().size(); // contiene l'elenco dei sotto stati dello stato corrente
+		String idSubState = "";
+		boolean selection = false;
+		boolean attentionAction = false;
+		String selectionName = "-1";
+		int localIdSelection = -1;
+		//String action = v.getAction();
+		
+		localId = visitaNodo(u, localId, selectionName, position, localIdSelection);	// visita il nodo e mi restituisce il localId maggiorato
+		//System.out.println("Il nodo: " + u.getNewName() + " ha nodi adiacenti sono : " + nrAdiacenti);
+				
+		if (nrSubState > 1){
+			localId++;
+			System.out.println("\n\n il nodo u=" + u.getNewName() + " deve fare una selection - "
+					+ "Questo è il localId da dare alla selection " + localId  +" \n");
+			selection = true;
+			selectionName = "selection"+localId;
+			localIdSelection = localId;
+			this.setAddListSelection(new it.moise.plc.uml.jaxb_plcopen.SelectionDivConv("selection"+localId, localId));
+			if (u.getAction().length() > 0)
+				this.selectionDivergence = new SelectionDivergenceTag(localId, position, localId-3, nrSubState + u.getListaAdiacenti().size(), addData);
+			else
+				this.selectionDivergence = new SelectionDivergenceTag(localId, position, localId-1, nrSubState + u.getListaAdiacenti().size(), addData);
+			this.sfc.getCommentOrErrorOrConnector().add(selectionDivergence);
+		}
+		
+		
+		// imposto il nodo come visitato
+		this.listaStati[u.getLevelStato()-1][u.getNumberState()-1].setVisitato(true);
+		int numeroNodo;
+		for (int i = 0; i < nrSubState; i++){
+			idSubState = u.getVectorSubState().get(i);
+			
+			// cerco in listaStati il nodo corrispondente all'id
+			for (int l= u.getLevelStato()-1; l < listaStati.length; l++){
+				for(int j=0; j < listaStati[l].length; j++){
+					if (listaStati[l][j] != null){
+						if (listaStati[l][j].getIdStato().equals(idSubState))
+							v = listaStati[l][j];
+					}
+				}
+			}
+			if (u.getAction().length() > 0)
+				attentionAction = true;
+			localId=visitaArco(u,v, localId, position, selection, localIdSelection, attentionAction);
+			
+			if (!v.getVisitato()){
+				localId = DFS_Hierarchic(listaStati, v, localId, position, addData);
+				// verifico se è un nodo foglia
+				
+				if (v.getVectorSubState().size() == 0){
+					//System.out.println(this.grafo.get(numeroNodo).getNewName() + " nodo FOGLIA");
+					// è un nodo foglia
+					// questo è il caso che non ha subState ma potrebbe avere degli JumpStart devo leggere gli stati adiacenti
+
+					if (v.getListaAdiacenti().size() > 1){
+						// apro una selectionDivergence
+						
+						
+						
+						// chiudo la selectionDivergence
+					}
+					else if(v.getLevelStato() == 1){
+						// faccio un solo jumpStart
+					}
+				/*
+					for (int l=0; l < this.getListSelection().size(); l++){
+						if (this.getListSelection().get(l).getName().equals(selectionName)){
+							if (v.getAction().length() > 0)
+								this.getListSelection().get(l).getListRefLocalId().add(localId-2);
+							else{
+								
+								this.getListSelection().get(l).getListRefLocalId().add(localId);
+							}
+								
+						}
+					}
+					*/
+				}
+			}else{
+			/*	localId++;
+				System.out.println("Nodo " + v.getNewName() + " già visitato faccio un JumpStep - localId = " + localId);
+				// il nodo è già stato visitato
+				// devo fare uno jumpStep
+				String nomeStato = v.getNewName() + "_" + v.getNomeStato();
+				this.jumpStep = new JumpStepTag(nomeStato, position, localId, addData);
+				this.sfc.getCommentOrErrorOrConnector().add(jumpStep);
+				if (this.getListSelection().size() > 0){
+					this.getListSelection().get(this.getListSelection().size()-1).getListRefLocalId().add(localId);
+				
+				
+				}
+				*/			
+			}
+			
+		}
+		
+		/*
+		Aggiunta di codice che in DFS normale non c'era. Se uno Step è una foglia ma ha delle trx in out, le devo mettere come
+		prima _TRX_XX in variabile e poi JumpStart verso lo start.
+		se cè una solo transizione in uscita è facile trx_ + jumpstart
+		se ci sono più transizioni devo fare un altre selection
+		*/
+		
+		
+		if (u.getListaAdiacenti().size() > 1){
+			
+			
+			// ci sono più trx in uscita
+			localId++;
+			System.out.println("\n\n il nodo v=" + u.getNewName() + " deve fare una selection - "
+					+ "Questo è il localId da dare alla selection " + localId  +" \n");
+			selection = true;
+			selectionName = "selection"+localId;
+			localIdSelection = localId;
+			this.setAddListSelection(new it.moise.plc.uml.jaxb_plcopen.SelectionDivConv("selection"+localId, localId));
+			if (u.getAction().length() > 0)
+				this.selectionDivergence = new SelectionDivergenceTag(localId, position, localId-3, u.getListTransitionOut().size(), addData);
+			else
+				this.selectionDivergence = new SelectionDivergenceTag(localId, position, localId-1, u.getListTransitionOut().size(), addData);
+			this.sfc.getCommentOrErrorOrConnector().add(selectionDivergence);
+			// 
+			for (String item : u.getListaAdiacenti()){
+				String target = item;
+				String source = u.getNewName();
+				
+				it.moise.plc.uml.Transitions trx =new it.moise.plc.uml.Transitions();
+				for (it.moise.plc.uml.Transitions itemTrx : this.vectorTransitions){
+					if (itemTrx.getNewNameStateSource().equals(source) && itemTrx.getNewNameStateTarget().equals(target))
+						trx = itemTrx;
+				}
+				localId++;
+				this.inVariable = new InVariableTag("_" + trx.getName() , localId, position);	
+				this.sfc.getCommentOrErrorOrConnector().add(inVariable);
+				
+				// aggiungo la transizione tra la selectione e inVariable
+				localId++;
+				if (selection){
+					
+						this.transition = new TransitionTag(position, localId, localIdSelection, localId-1, addData);
+				}else{
+					if (u.getAction().length() > 0)
+						this.transition = new TransitionTag(position, localId, localId-4, localId-1, addData);
+					else
+						this.transition = new TransitionTag(position, localId, localId-2, localId-1, addData);
+				}
+				
+				this.sfc.getCommentOrErrorOrConnector().add(transition);
+				
+				localId++;
+				String tmp = "";
+				tmp = trx.getNameStateTarget().replace(".", "_");	
+				tmp.replace("-", "_");
+				tmp.replace(".",  "_");
+				tmp.replace("!",  "_");
+				tmp.replace(" ", "_");
+				String nomeStato = trx.getNewNameStateTarget() + "_" + tmp;
+				this.jumpStep = new JumpStepTag(nomeStato, position, localId, addData);
+				this.sfc.getCommentOrErrorOrConnector().add(jumpStep);
+				//if (this.getListSelection().size() > 0){
+				//	this.getListSelection().get(this.getListSelection().size()-1).getListRefLocalId().add(localId);
+				for (int l=0; l < this.getListSelection().size(); l++){
+					if (this.getListSelection().get(l).getName().equals(selectionName)){
+						if (v.getAction().length() > 0)
+							this.getListSelection().get(l).getListRefLocalId().add(localId-2);
+						else{
+							
+							this.getListSelection().get(l).getListRefLocalId().add(localId);
+						}
+							
+					}
+				
+				}
+			}
+			// chiudo la selection 
+			
+			
+			
+		}else{
+			// c'è una sola trx in uscita
+			if (u.getListaAdiacenti().size() == 1){
+				String target = u.getListaAdiacenti().get(0);
+				String source = u.getNewName();
+				
+				it.moise.plc.uml.Transitions trx =new it.moise.plc.uml.Transitions();
+				for (it.moise.plc.uml.Transitions item : this.vectorTransitions){
+					if (item.getNewNameStateSource().equals(source) && item.getNewNameStateTarget().equals(target))
+						trx = item;
+				}
+				localId++;
+				
+				this.inVariable = new InVariableTag("_" + trx.getName() , localId, position);	
+				this.sfc.getCommentOrErrorOrConnector().add(inVariable);
+				// aggiungo la transizione tra la selectione e inVariable
+				localId++;
+				if (selection){
+					
+						this.transition = new TransitionTag(position, localId, localIdSelection, localId-1, addData);
+				}else{
+					if (u.getAction().length() > 0)
+						this.transition = new TransitionTag(position, localId, localId-4, localId-1, addData);
+					else
+						this.transition = new TransitionTag(position, localId, localId-2, localId-1, addData);
+				}
+				
+				this.sfc.getCommentOrErrorOrConnector().add(transition);
+				localId++;
+				String tmp = "";
+				tmp = trx.getNameStateTarget().replace(".", "_");	
+				tmp.replace("-", "_");
+				tmp.replace(".",  "_");
+				tmp.replace("!",  "_");
+				tmp.replace(" ", "_");
+				String nomeStato = trx.getNewNameStateTarget() + "_" + tmp;
+				this.jumpStep = new JumpStepTag(nomeStato, position, localId, addData);
+				this.sfc.getCommentOrErrorOrConnector().add(jumpStep);
+				if (this.getListSelection().size() > 0){
+					this.getListSelection().get(this.getListSelection().size()-1).getListRefLocalId().add(localId);
+				}
+			}
+		}
+		
+		
+		if (selection){
+			
+			localId++;
+			int ultimaSelection = this.getListSelection().size()-1;
+			
+			System.out.println("\n\n Chiudo la selection con ConvergenceSelection : " + localId);
+			this.selectionConvergence = new SelectionConvergenceTag(
+											localId, 
+											this.getListSelection().get(ultimaSelection).getListRefLocalId(), 
+											u.getListaAdiacenti().size()+u.getVectorSubState().size());
+			this.sfc.getCommentOrErrorOrConnector().add(selectionConvergence);
+			System.out.println("listSelection ha nr. " + (ultimaSelection+1));
+			System.out.println("chiudo la selection con il nome : " + this.getListSelection().get(ultimaSelection).getName());
+			this.getListSelection().remove(ultimaSelection);
+			ultimaSelection = this.getListSelection().size()-1;
+			System.out.println("Ora listSelection ha nr. " + (ultimaSelection+1));
+			
+			// devo inserire l'id della convergence nel refLocalId della convergence precedente
+			if (this.getListSelection().size() > 0){
+				ultimaSelection = this.getListSelection().size()-1;
+				this.getListSelection().get(ultimaSelection).getListRefLocalId().add(localId);
+			}
+		}
+		
+		return localId;
+	}
 	/**
-	 * Metodo
+	 * Metododi visita del grafo DFS è utilizzato nella versione dove il diagramma SFC è generato come quello dell'UML
 	 * @param grafo
 	 * @param u
 	 */
@@ -1265,6 +1599,8 @@ public class PouTag extends Project.Types.Pous.Pou {
 				// il nodo è già stato visitato
 				// devo fare uno jumpStep
 				String nomeStato = v.getNewName() + "_" + v.getNomeStato();
+				
+				
 				this.jumpStep = new JumpStepTag(nomeStato, position, localId, addData);
 				this.sfc.getCommentOrErrorOrConnector().add(jumpStep);
 				if (this.getListSelection().size() > 0){
@@ -1300,6 +1636,13 @@ public class PouTag extends Project.Types.Pous.Pou {
 		
 		return localId;
 	}
+	
+	/**
+	 * Restituisce il numero del nodo a partire dal nome del nodo
+	 * @param listaNodi Lista dei Nodi- Grafo
+	 * @param nomeNodo Nome del nodo
+	 * @return nrNodo Il numero del nodo 
+	 */
 	public static int getNrNodoFromNomeNodo(ArrayList<StateLevel> listaNodi, String nomeNodo){
 		int i=0;
 		int nrNodo=-1;
@@ -1367,19 +1710,24 @@ public class PouTag extends Project.Types.Pous.Pou {
 		/*
 		 * devo cercare la il numero di trx che mi porta dal nodo u a v
 		 */
-		int nrNodo = getNrNodoFromNomeNodo(this.grafo, v.getNewName());
-		int nrTrx = 0;
-		int i=0;
-		for (it.moise.plc.uml.Transitions itemTrx : this.vectorTransitions){
-			if (itemTrx.getNewNameStateSource().equals(u.getNewName()) && 
-				itemTrx.getNewNameStateTarget().equals(v.getNewName())){
-				nrTrx = i+1;
+		String idStateSource = u.getIdStato();
+		String idStateTarget = v.getIdStato();
+		String trxName = "";
+		boolean trxTrovata = false;
+		for (it.moise.plc.uml.Transitions item: this.vectorTransitions){
+			if (item.getIdStateSource().equals(item.getIdStateTarget())){
+				trxName = "_" + item.getName();
+				item.setTrxUtilizzatoInSFC(true);
+				trxTrovata = true;
 			}
-			i++;	
-		} // k
+		}
+		
+		if (!trxTrovata)
+			trxName = "_TRX_DEFAULT";
+		
 		localId++;
-		this.inVariable = new InVariableTag("_" + this.vectorTransitions.get((nrTrx-1)).getName(), localId, position);
-		this.vectorTransitions.get(nrTrx-1).setTrxUtilizzatoInSFC(true);
+		this.inVariable = new InVariableTag(trxName, localId, position);
+		
 		
 		this.sfc.getCommentOrErrorOrConnector().add(inVariable);
 		localId++;
@@ -1394,7 +1742,7 @@ public class PouTag extends Project.Types.Pous.Pou {
 		}
 		
 		this.sfc.getCommentOrErrorOrConnector().add(transition);
-		System.out.println("Aggiunto var TRX=" + nrTrx + "  localId=" + localId);
+		System.out.println("Aggiunto var " + trxName + "  localId=" + localId);
 		return localId;
 	}
 	/**
@@ -1543,6 +1891,74 @@ public class PouTag extends Project.Types.Pous.Pou {
 		for (int i=0; i < this.tipiVariabili.length; i++){
 			if (tipoVar.equals(this.tipiVariabili[i])){
 				ris = true;
+			}
+		}
+		return ris;
+	}
+	
+	private void clearSubstateInListAdiacentiGrafo(){
+		ArrayList<String> tmpList;
+		String idAdiacente = "";
+		String idStato = "";
+		boolean trovato = false;
+		
+		for (StateLevel state : this.grafo){
+			tmpList = new ArrayList<String>();
+			idStato = state.getIdStato();
+			String tmp = "";
+			tmp = state.getNomeStato().replace("-|.|!| ", "_");
+			tmp = tmp.replace(" ", "_");
+			state.setNomeStato(tmp);
+			for (int i=0; i < state.getListaAdiacenti().size(); i++){
+				for(StateLevel itemState: this.grafo){
+					if (itemState.getNewName().equals(state.getListaAdiacenti().get(i)))
+						idAdiacente = itemState.getIdStato();
+				}
+				
+				trovato = cercaAdiacenteSubState(idStato, idAdiacente, false);
+				if (trovato){
+					
+					System.out.println("trovato sottostato adiacente stato:" + state.getNomeStato() + " adiacente: " + state.getListaAdiacenti().get(i) );
+					//state.getListaAdiacenti().remove(i);
+					
+				}
+				if (!trovato){
+					tmpList.add(state.getListaAdiacenti().get(i));
+				}
+				
+			}
+			state.setListListaAdiacenti(tmpList);
+			for (int x=0; x < this.listaStati.length; x++){
+				for (int y=0; y < this.listaStati[x].length; y++){
+					if (this.listaStati[x][y] != null){
+						if (this.listaStati[x][y].getIdStato().equals(state.getIdStato()))
+							this.listaStati[x][y].setListListaAdiacenti(tmpList);
+					}
+				}
+			}
+		}		
+	}
+	
+	private boolean cercaAdiacenteSubState (String idStato, String idAdiacente, boolean ris){
+		String newIdStato="";
+		
+		for (int i=0; i < this.listaStati.length; i++){
+			for (int j=0; j < this.listaStati[i].length; j++){
+				if (this.listaStati[i][j] != null){
+					if (this.listaStati[i][j].getIdStato().equals(idStato)){
+						for (int k=0; k < this.listaStati[i][j].getVectorSubState().size(); k++){
+							newIdStato = this.listaStati[i][j].getVectorSubState().get(k);
+							if (newIdStato.equals(idAdiacente)){
+								
+								ris = true; 
+								
+								k=this.listaStati[i][j].getVectorSubState().size();
+							}else{
+								ris = cercaAdiacenteSubState(newIdStato, idAdiacente, ris);
+							}
+						}
+					}
+				}
 			}
 		}
 		return ris;

@@ -4271,7 +4271,7 @@ public class MioDom {
 						state = searchState(idStato);
 						// modifico la l'idTarget della transizione con l'idStato che è il target della trx in out del join
 						this.vectorTransitions.get(l).setIdStateTarget(idStato);
-						this.vectorTransitions.get(l).setNameStateTarget("Join");
+						this.vectorTransitions.get(l).setNameStateTarget(state.getNomeStato());
 						this.vectorTransitions.get(l).setNewNameStateTarget(state.getNewName());
 						this.vectorTransitions.get(l).setLevelTarget(state.getLevelStato());
 						this.vectorTransitions.get(l).setNumberStateTarget(state.getNumberState());

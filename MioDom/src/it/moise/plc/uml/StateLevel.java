@@ -320,4 +320,11 @@ public class StateLevel implements Comparable<StateLevel>{
 	public ArrayList<Choice> getListChoice(){
 		return this.listChoice;
 	}
+	/**
+	 * Copia la lista che gli viene passata
+	 * @param listaAdiacenti
+	 */
+	public void setListListaAdiacenti(ArrayList<String> listaAdiacenti){
+		this.listaAdiacenti = listaAdiacenti;
+	}
 }
